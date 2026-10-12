@@ -28,8 +28,9 @@ cleanup through synchronous REST calls to asynchronous MQ decoupling and alertin
 Plus [`common/`](common) (no port) — the shared ActiveMQ broker and MQ config notes
 for `package-status-topic`: Package status updates move from latency-driven RPC to bandwidth-driven messaging.
 
-**Status:** scaffold only — build files, Javalin bootstrap, and TODOs are in place; no
-business logic has been implemented yet.
+**Status:** Stage 1 data cleaning and Stage 2 REST behavior are implemented. Stage 3
+publishing/subscription uses ActiveMQ. Stage 4 AlertBot remains an optional stretch
+goal.
 
 ## Your task
 
@@ -121,6 +122,9 @@ find . -name pom.xml -execdir mvn -q package \;
 # ingestion
 cd ingestion-service && mvn package && java -jar target/ingestion-service.jar
 
+# MQ broker (start before the MQ-aware services)
+cd common && docker compose up -d
+
 # domain services, each in its own terminal
 # terminal 1
 cd hub-service && mvn package && java -jar target/hub-service.jar
@@ -128,9 +132,6 @@ cd hub-service && mvn package && java -jar target/hub-service.jar
 cd delay-stage-service && mvn package && java -jar target/delay-stage-service.jar
 # terminal 3
 cd transit-service && mvn package && java -jar target/transit-service.jar
-
-# MQ broker (needed once the MQ-aware services above are wired up)
-cd common && docker compose up -d
 
 # alerting
 cd alertbot && mvn package && java -jar target/alertbot.jar
@@ -146,34 +147,7 @@ cd alertbot && mvn package && java -jar target/alertbot.jar
 
 ## Test
 
-No automated tests exist yet (this is a scaffold). Each running service exposes
-`/health`, so sanity-check manually:
-
-```
-curl http://localhost:7050/health   # -> OK
-```
-
-To add real tests to a module, add JUnit 5 and Surefire to its `pom.xml`:
-
-```xml
-<dependency>
-  <groupId>org.junit.jupiter</groupId>
-  <artifactId>junit-jupiter</artifactId>
-  <version>5.10.2</version>
-  <scope>test</scope>
-</dependency>
-```
-
-```xml
-<plugin>
-  <groupId>org.apache.maven.plugins</groupId>
-  <artifactId>maven-surefire-plugin</artifactId>
-  <version>3.2.5</version>
-</plugin>
-```
-
-then add tests under that module's `src/test/java/...` and run:
-
-```
-mvn test
-```
+The independent Maven modules contain tests under their own `src/test/java`
+directories. Run `mvn clean test` from an individual module directory. The MQ tests
+cover event publishing decisions, payload application, and ETA behavior without
+requiring Docker. For a live end-to-end broker check, follow [common/README.md](common/README.md).
