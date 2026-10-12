@@ -54,15 +54,20 @@ from their own directories at the project root).
 docker compose ps          # confirm the broker container is healthy
 ```
 
-Once the TODOs below are implemented, verify end-to-end by publishing a message from
-`delay-stage-service` and confirming the consumer(s) receive it — e.g. via logs, or by
-watching the topic in the web console.
+`delay-stage-service` publishes JSON text events containing `hubId`, `stage`, and
+`timestamp` when a stage changes. `transit-service` subscribes and updates an in-memory
+latest-stage cache. If the broker is unavailable, transit retries its subscription;
+delay-stage returns HTTP 503 for a changed stage it cannot publish, without storing
+that unannounced update. An unchanged stage does not require a publish.
 
-## TODO
+To verify end-to-end, start the broker, then start `transit-service` before
+`delay-stage-service`. POST a new stage to `http://localhost:7052/delay-stage/H-500`,
+then request `http://localhost:7053/transit/H-500`; the returned `delayStage` should
+reflect the published event. The publisher and subscriber log connection and failure
+information. The transit cache is in-memory, so it starts at stage 0 until it receives
+an event after startup.
 
-- Add `activemq-client` publish logic to `delay-stage-service` on its stage/state-change endpoint.
-- Add `activemq-client` subscriber logic to consumer service(s) above, replacing any
-  direct synchronous calls to `delay-stage-service`.
-- `alertbot` (stretch goal) needs its own subscriber logic too — its `pom.xml`
-  already has the `activemq-client` dependency alongside the other participating
-  services.
+## Remaining optional work
+
+- `alertbot` (stretch goal) can add its own subscriber logic and simulate an alert
+  when a hub crosses a chosen delay-stage threshold.
