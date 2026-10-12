@@ -7,7 +7,11 @@ Tracks the Transit Delay Stage (0-8, e.g. weather shutdowns).
 Part of the [LogisticsConnect](../README.md) project. Independent Maven module, no
 parent pom.
 
-MQ: this service publishes to the ActiveMQ topic `package-status-topic` — see [`../common/`](../common). Broker URL and topic name come from the common `co.wethinkcode.logisticsconnect.mq.MqConfig` class alongside it in this module.
+MQ: on a valid stage change, this service publishes a JSON text message containing
+`hubId`, `stage`, and `timestamp` to `package-status-topic` — see [`../common/`](../common).
+If ActiveMQ cannot accept a changed-stage event, the endpoint returns HTTP 503 and
+does not store the new stage. Reposting after broker recovery will therefore still
+publish the change.
 
 ## Project structure
 
@@ -36,11 +40,6 @@ Listens on port `7052`.
 
 ## Test
 
-No automated tests yet. Manually verify it's up:
-
-```
-curl http://localhost:7052/health   # -> OK
-```
-
-To add real tests, add JUnit 5 + the Surefire plugin to `pom.xml`, put tests under
-`src/test/java/co/wethinkcode/logisticsconnect/`, and run `mvn test`.
+From this module directory, run `mvn clean test`. Unit and HTTP endpoint tests run
+without a broker by injecting a test publisher. To test actual publishing, start the
+broker using `../common/docker-compose.yml` and run the service.
