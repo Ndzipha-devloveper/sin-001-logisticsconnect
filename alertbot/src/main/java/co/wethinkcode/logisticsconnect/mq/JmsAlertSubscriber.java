@@ -1,4 +1,5 @@
 package co.wethinkcode.logisticsconnect.mq;
+import co.wethinkcode.logisticsconnect.AlertTracker;
 
 import java.io.IOException;
 import java.util.concurrent.Executors;
@@ -20,13 +21,13 @@ import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import co.wethinkcode.logisticsconnect.AlertBotApp;
 
 public class JmsAlertSubscriber implements AutoCloseable {
 
     private static final Logger logger = LoggerFactory.getLogger(JmsAlertSubscriber.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final int MAX_STAGE = 8;
+    private final AlertTracker tracker = new AlertTracker();
 
     private final ActiveMQConnectionFactory connectionFactory =
             new ActiveMQConnectionFactory(MqConfig.BROKER_URL);
@@ -94,7 +95,7 @@ public class JmsAlertSubscriber implements AutoCloseable {
             String hubId = event.get("hubId").asText().trim();
             int stage = event.get("stage").asInt();
 
-            if (AlertBotApp.shouldSendAlert(stage)) {
+            if (tracker.shouldAlert(hubId,stage)) {
                 logger.info("SIMULATED DELAY ALERT: hub {} is at stage {}", hubId, stage);
             }
         } catch (JMSException | IOException exception) {
