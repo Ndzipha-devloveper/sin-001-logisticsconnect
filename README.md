@@ -28,9 +28,10 @@ cleanup through synchronous REST calls to asynchronous MQ decoupling and alertin
 Plus [`common/`](common) (no port) — the shared ActiveMQ broker and MQ config notes
 for `package-status-topic`: Package status updates move from latency-driven RPC to bandwidth-driven messaging.
 
-**Status:** Stage 1 data cleaning and Stage 2 REST behavior are implemented. Stage 3
-publishing/subscription uses ActiveMQ. Stage 4 AlertBot remains an optional stretch
-goal.
+**Status:** All four stages are implemented. Stage 1 data cleaning and Stage 2 REST
+behavior are in place, Stage 3 uses ActiveMQ for publishing and subscription, and
+Stage 4 AlertBot logs a simulated alert when a hub's delay stage crosses from below 5
+to 5 or above.
 
 ## Your task
 
@@ -99,7 +100,7 @@ logisticsconnect/
 
 ## Build
 
-Requirements: Java 17+, Maven 3.8+, Docker (for the broker in `common/`).
+Requirements: Java 21+, Maven 3.8+, Docker (for the broker in `common/`).
 
 Every folder here (`ingestion-service/`, each domain service, and `alertbot/`) is
 an **independent** Maven project — there is no parent/aggregator pom. Build one at a
@@ -129,13 +130,15 @@ cd common && docker compose up -d
 # terminal 1
 cd hub-service && mvn package && java -jar target/hub-service.jar
 # terminal 2
-cd delay-stage-service && mvn package && java -jar target/delay-stage-service.jar
-# terminal 3
 cd transit-service && mvn package && java -jar target/transit-service.jar
-
-# alerting
+# terminal 3
 cd alertbot && mvn package && java -jar target/alertbot.jar
+# terminal 4 (start last)
+cd delay-stage-service && mvn package && java -jar target/delay-stage-service.jar
 ```
+
+Start `transit-service` and `alertbot` before `delay-stage-service`: the topic is
+non-durable, so events published before a subscriber connects are not replayed.
 
 | Service | Port |
 |---|---|
